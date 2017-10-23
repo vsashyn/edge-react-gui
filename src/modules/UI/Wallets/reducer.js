@@ -1,145 +1,143 @@
 // @flow
 
 import {combineReducers} from 'redux'
-import {GuiWallet} from '../../../types.js'
-import type {AbcDenomination, AbcMetaToken} from 'airbitz-core-types'
+import type {AbcCurrencyWallet} from 'airbitz-core-types'
 import * as ACTION from './action'
 import {UPDATE_WALLETS} from '../../Core/Wallets/action.js'
+type ByIdState = {[string]: AbcCurrencyWallet}
 
-export const byId = (state: any = {}, action: any) => {
-  const {type, data = {} } = action
-  switch (type) {
-  case UPDATE_WALLETS: {
-    const wallets = action.data.currencyWallets
-    const out = {}
-    for (const walletId of Object.keys(wallets)) {
-      out[walletId] = schema(wallets[walletId])
-    }
+export const activeWalletIds = (state: Array<string> = [], {type,  data: {activeWalletIds} }: any) => type === UPDATE_WALLETS ? activeWalletIds : state
+export const archivedWalletIds = (state: Array<string> = [], {type, data: {archivedWalletIds} }: any) => type === UPDATE_WALLETS ? archivedWalletIds : state
+export const selectedWalletId = (state: string = '', {type, data: {walletId} }: any) => type === ACTION.SELECT_WALLET_ID ? walletId : state
+export const selectedCurrencyCode = (state: string = '', {type, data: {currencyCode} }: any) => type === ACTION.SELECT_CURRENCY_CODE ? currencyCode : state
+export const byId = (state: ByIdState, action: any) =>
+  action.type === ACTION.UPSERT_WALLET
+  ? {...state, [wallet.id]: wallet(state[wallet.id], action)}
+  : state
 
-    return out
+const id = (state, {type, data: {currencyWallet: wallet} }) =>
+  type === ACTION.UPSERT_WALLET
+  ? wallet.id
+  : state
+
+const type = (state, {type, data: {currencyWallet: wallet} }) =>
+  type === ACTION.UPSERT_WALLET
+  ? wallet.type
+  : state
+
+const name = (state, {type, data: {currencyWallet: wallet} }) =>
+  type === ACTION.UPSERT_WALLET
+  ? wallet.name
+  : state
+
+const primaryNativeBalance = (state, {type, data: {currencyWallet: wallet} }) =>
+  type === ACTION.UPSERT_WALLET
+  ? wallet.getBalance(wallet.currencyCode)
+  : state
+
+const currencyNames = (state, {type, data: {currencyWallet: wallet} }) =>
+  type === ACTION.UPSERT_WALLET
+  ? [wallet.currencyInfo.currencyName, ...wallet.metaTokens.map((metaToken) => metaToken.currencyName)]
+  : state
+
+const currencyCode = (state, {type, data: {currencyWallet: wallet} }) =>
+  type === ACTION.UPSERT_WALLET
+  ? wallet.currencyCode
+  : state
+
+const isoFiatCurrencyCode = (state, {type, data: {currencyWallet: wallet} }) =>
+  type === ACTION.UPSERT_WALLET
+  ? wallet.fiatCurrencyCode
+  : state
+
+const fiatCurrencyCode = (state, {type, data: {currencyWallet: wallet} }) =>
+  type === ACTION.UPSERT_WALLET
+  ? wallet.fiatCurrencyCode.replace('iso:', '')
+  : state
+
+const denominations = (state, {type, data: {currencyWallet: wallet} }) =>
+  type === ACTION.UPSERT_WALLET
+  ? wallet.currencyInfo.denominations
+  : state
+
+const symbolImage = (state, {type, data: {currencyWallet: wallet} }) =>
+  type === ACTION.UPSERT_WALLET
+  ? wallet.currencyInfo.symbolImage
+  : state
+
+const symbolImageDarkMono = (state, {type, data: {currencyWallet: wallet} }) =>
+  type === ACTION.UPSERT_WALLET
+  ? wallet.currencyInfo.symbolImageDarkMono
+  : state
+
+const metaTokens = (state, {type, data: {currencyWallet: wallet} }) =>
+  type === ACTION.UPSERT_WALLET
+  ? wallet.currencyInfo.metaTokens
+  : state
+
+const allDenominations = (state, {type, data: {currencyWallet: wallet} }) =>
+  type === ACTION.UPSERT_WALLET
+  ? {
+    [wallet.currencyCode]: wallet.denominations.reduce((denominations, denomination) => ({
+      ...denominations,
+      [denomination.multiplier]: denomination
+    }), {}),
+
+    ...wallet.metaTokens.reduce((tokenDenominations, metaToken) => ({
+      ...tokenDenominations,
+
+      [metaToken.currencyCode]: {
+        ...metaToken.denominations.reduce((denominations, denomination) => ({
+          ...denominations,
+
+          [denomination.multiplier]: denomination
+        }), {})
+      }
+
+    }), {})
   }
+  : state
 
-  case ACTION.UPSERT_WALLET:
+const nativeBalances = (state, {type, data: {currencyWallet: wallet} }) => {
+  switch (type) {
+  case ACTION.UPSERT_WALLET: {
+    const currencyCode = wallet.currencyCode
+    const metaTokens = wallet.metaTokens
+
     return {
-      ...state,
-      [data.wallet.id]: schema(data.wallet)
+      [currencyCode]: wallet.getBalance({currencyCode}),
+      ...metaTokens.reduce((tokenBalances, metaToken) => {
+        const currencyCode = metaToken.currencyCode
+        const balance: string = wallet.getBalance({currencyCode})
+
+        return {
+          ...tokenBalances,
+          [currencyCode]: balance
+        }
+      }, {})
     }
-
+  }
   default:
     return state
   }
 }
 
-export const activeWalletIds = (state: any = [], action: any) => {
-  if (action.type === UPDATE_WALLETS) {
-    return action.data.activeWalletIds
-  }
-
-  return state
-}
-
-export const archivedWalletIds = (state: any = [], action: any) => {
-  if (action.type === UPDATE_WALLETS) {
-    return action.data.archivedWalletIds
-  }
-
-  return state
-}
-
-export const selectedWalletId = (state: string = '', action: any) => {
-  const {type, data = {} } = action
-  const {walletId} = data
-
-  switch (type) {
-  case ACTION.SELECT_WALLET_ID:
-    return walletId
-  default:
-    return state
-  }
-}
-
-export const selectedCurrencyCode = (state: string = '', action: any) => {
-  const {type, data = {} } = action
-  const {currencyCode} = data
-
-  switch (type) {
-  case ACTION.SELECT_CURRENCY_CODE:
-    return currencyCode
-  default:
-    return state
-  }
-}
-
-function schema (wallet: any): GuiWallet {
-  const id: string = wallet.id
-  const type: string = wallet.type
-  const name: string = wallet.name || 'no wallet name'
-
-  const currencyCode: string = wallet.currencyInfo.currencyCode
-  const fiatCurrencyCode: string = wallet.fiatCurrencyCode.replace('iso:', '')
-  const isoFiatCurrencyCode: string = wallet.fiatCurrencyCode
-  const symbolImage: string = wallet.currencyInfo.symbolImage
-  const symbolImageDarkMono: string = wallet.currencyInfo.symbolImageDarkMono
-  const metaTokens: Array<AbcMetaToken> = wallet.currencyInfo.metaTokens
-  const denominations: Array<AbcDenomination> = wallet.currencyInfo.denominations
-
-  const allDenominations: {
-    [currencyCode: string]: { [denomination: string]: AbcDenomination }
-  } = {}
-
-  // Add all parent currency denominations to allDenominations
-  const parentDenominations = denominations.reduce((denominations, denomination) => ({
-    ...denominations, [denomination.multiplier]: denomination
-  }), {})
-
-  allDenominations[currencyCode] = parentDenominations
-
-  const nativeBalances: { [currencyCode: string]: string } = {}
-  // Add parent currency balance to balances
-  nativeBalances[currencyCode] = wallet.getBalance({currencyCode})
-
-  // Add parent currency currencyCode
-  const currencyNames: { [currencyCode: string]: string } = {}
-  currencyNames[currencyCode] = wallet.currencyInfo.currencyName
-
-  metaTokens.forEach((metaToken) => {
-    const currencyCode: string = metaToken.currencyCode
-    const currencyName: string = metaToken.currencyName
-    const balance: string = wallet.getBalance({currencyCode})
-    const denominations: Array<AbcDenomination> = metaToken.denominations
-
-    // Add token balance to allBalances
-    nativeBalances[currencyCode] = balance
-    currencyNames[currencyCode] = currencyName
-
-    // Add all token denominations to allDenominations
-    const tokenDenominations: {
-      [denomination: string]: AbcDenomination
-    } = denominations.reduce((denominations, denomination) => ({...denominations, [denomination.multiplier]: denomination}), {})
-    allDenominations[currencyCode] = tokenDenominations
-  })
-
-  const primaryNativeBalance: string = nativeBalances[currencyCode]
-
-  const newWallet = new GuiWallet(
-    id,
-    type,
-    name,
-    primaryNativeBalance,
-    nativeBalances,
-    currencyNames,
-    currencyCode,
-    isoFiatCurrencyCode,
-    fiatCurrencyCode,
-    denominations,
-    allDenominations,
-    symbolImage,
-    symbolImageDarkMono,
-    metaTokens
-  )
-
-  return newWallet
-}
+const wallet = combineReducers({
+  id,
+  type,
+  name,
+  primaryNativeBalance,
+  nativeBalances,
+  currencyNames,
+  currencyCode,
+  isoFiatCurrencyCode,
+  fiatCurrencyCode,
+  denominations,
+  allDenominations,
+  symbolImage,
+  symbolImageDarkMono,
+  metaTokens
+})
 
 export const wallets = combineReducers({
   byId,
