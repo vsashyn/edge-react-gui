@@ -6,6 +6,7 @@ import type {
   AbcCurrencyPlugin,
   AbcContextOptions
 } from 'airbitz-core-types'
+import SplashScreen from 'react-native-smart-splash-screen'
 
 import HockeyApp from 'react-native-hockeyapp'
 import React, {Component} from 'react'
@@ -203,6 +204,11 @@ export default class Main extends Component<Props, State> {
         this.props.addUsernames(usernames)
       })
       this.props.setLocaleInfo(localeInfo)
+      SplashScreen.close({
+        animationType: SplashScreen.animationType.fade,
+        duration: 850,
+        delay: 500,
+      })
     })
   }
 
