@@ -102,7 +102,7 @@ const loadSettings = () => (dispatch: Dispatch, getState: GetState) => {
 }
 
 export const logoutRequest = (username: string | null) => (dispatch: Dispatch, getState: GetState) => {
-  Actions.popTo(Constants.LOGIN, {username})
+  console.log('break')
 
   const state = getState()
   dispatch(SETTINGS_ACTIONS.setLoginStatus(false))

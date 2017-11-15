@@ -10,7 +10,7 @@ import {
   Icon
 } from 'native-base'
 import _ from 'lodash'
-
+import {Actions} from 'react-native-router-flux'
 import styles from '../style'
 
 export default class UserList extends Component {
